@@ -2,7 +2,13 @@
 #This will scrape that data from a users account, peramiters can be set for downloading certains songs or entire playlists
 #metadata is preserved as well as playlist or albumn structure
 from gmusicapi import Mobileclient
+from urllib import urlopen
 import urllib
+import eyed3
+from mutagen.id3 import ID3, TIT2
+from mutagen.easyid3 import EasyID3
+import os
+#from MusicLibraryManager import MLM
 
 class GoogleMusicManager(object):
     def __init__(self):
@@ -15,6 +21,7 @@ class GoogleMusicManager(object):
     def Login(self, userName, userPassWord):
         """Login method to access you google play account"""
         self.api = Mobileclient()
+        #reload(MusicLibraryManager)
         if(self.api.login(userName,userPassWord,Mobileclient.FROM_MAC_ADDRESS)):
 
             print "You have been logged in"
@@ -26,22 +33,70 @@ class GoogleMusicManager(object):
         """Get all songs that the user has listen too that are associated with the account"""
         print "Getting all Songs"
         self.activeSongList = self.api.get_all_songs(False)
-            #Check to see if the song has been added before.
-            #~~Maybe have it record the songs that have been downloaded already
-            #~~if the time to check using the os library is long
+        #print str(self.activeSongList.count)
+        baseDir = os.getcwd() + '/Music'
+        print "Grabbed " + str(len(self.activeSongList)) +" Songs"
+        #smallList = self.activeSongList[:3]
+        for currentSong in self.activeSongList:
+            #currentSong = self.activeSongList[0]
+            #create a location sting for where the song will be saved.
+            #check artist path
+            artistPath = currentSong['artist'].strip().replace('/','')
+            albumPath = currentSong['album'].strip().replace('/','')
+            songTitle = currentSong['title'].replace('/','')
+            print artistPath +" "+ albumPath
+            songPath = '/'+ artistPath + '/'+ albumPath+ "/"
+            if os.path.exists(baseDir+songPath):
+                print "Folder Structure exists"
 
-            #Getting stream URL
+            else:
+                print "Folder Structure does not exist"
 
-            #Download file using the URL
+                if not os.path.exists(artistPath):
+                    os.makedirs(baseDir+songPath)
+                    print "created artitst and alartistPathbumn folder"
+                else:
+                    os.makedirs(baseDir+songPath)
+            print os.path.isfile(baseDir+songPath+songTitle+'.mp3')
+            print baseDir+songPath+songTitle+'.mp3'
+            if not os.path.isfile(baseDir+songPath+songTitle+'.mp3'):
+                #get stream url
+                streamUrl = self.api.get_stream_url(currentSong['id'])
+                urllib.urlretrieve(streamUrl,baseDir + songPath  + songTitle +'.mp3')
 
-            #Inject metadata into the now file
+                song = eyed3.load(baseDir + songPath + songTitle + '.mp3')
+                song.initTag()
+                song.tag.save()
+                song = eyed3.load(baseDir + songPath + songTitle + '.mp3')
+                song.tag.title = currentSong['title']
+                song.tag.artist = currentSong['artist']
+                song.tag.album = currentSong['album']
+                #song.tag.year = currentSong['year']
+                song.tag.genre = currentSong['genre']
+                song.tag.trackNumber = currentSong['trackNumber']
+                #song.tag.album = song['album']
+                #print song.tag.version
+                song.tag.save()
+                #print song.tag
+                #for song in self.activeSongList:
+            else:
+                song = eyed3.load(baseDir + songPath + songTitle + '.mp3')
+                song.initTag()
+                song.tag.save()
+                song = eyed3.load(baseDir + songPath + songTitle + '.mp3')
+                song.tag.title = currentSong['title']
+                song.tag.artist = currentSong['artist']
+                song.tag.album = currentSong['album']
+                song.tag.genre = currentSong['genre']
+                #song.tag.year = currentSong['year']
+                song.tag.trackNumber = currentSong['trackNumber']
+                #song.tag.album = song['album']
+                #print song.tag.version
+                song.tag.save()
 
-            #Check if file destination is created.
-            #Structure: /BaseDir/Artist/Album/
-            #If the file directory has not been create, call the method to set it up for
-            #an new artist
+    def updateSongs():
+        """Update locally stored music with any newly listened to or added"""
 
-            #Move file to new directory
 
 
     def getPlaylist(self,playlistName):
